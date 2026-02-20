@@ -73,6 +73,7 @@
 
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .fav-active { color: #e11d48 !important; fill: #e11d48; }
+        .download-active { color: #22c55e !important; }
 
         footer { border-top: 1px solid rgba(255,255,255,0.05); }
 
@@ -80,7 +81,7 @@
         #offline-toast {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
             background: #e11d48; color: white; padding: 12px 24px; border-radius: 100px;
-            font-[10px] font-black uppercase tracking-widest z-[200]; transition: transform 0.5s ease;
+            font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; z-index: 200; transition: transform 0.5s ease;
         }
         #offline-toast.visible { transform: translateX(-50%) translateY(0); }
     </style>
@@ -111,7 +112,6 @@
             </div>
             <div class="flex gap-2">
                 <button onclick="togglePanel('ai-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all shadow-lg shadow-red-600/10"><i data-lucide="bot" class="w-5 h-5"></i></button>
-                
                 <button onclick="togglePanel('history-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all"><i data-lucide="history" class="w-5 h-5"></i></button>
                 <button onclick="togglePanel('favorites-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all"><i data-lucide="heart" class="w-5 h-5"></i></button>
                 <button onclick="togglePanel('settings-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all"><i data-lucide="settings" class="w-5 h-5"></i></button>
@@ -151,7 +151,7 @@
 
     <div id="ai-panel" class="side-panel flex flex-col border-l border-white/10">
         <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
-            <h3 class="font-black uppercase italic text-lg text-white">CineVault Assistant</h3>
+            <h3 class="font-black uppercase italic text-lg text-white">Nexus Intelligence</h3>
             <button onclick="togglePanel('ai-panel')" class="text-zinc-500 hover:text-white"><i data-lucide="x"></i></button>
         </div>
         <div class="flex-grow">
@@ -206,7 +206,10 @@
         <div class="p-5 flex flex-col sm:flex-row justify-between items-center bg-zinc-900/50 border-b border-white/5 gap-5 backdrop-blur-md">
             <div class="flex items-center gap-4 w-full sm:w-auto justify-between">
                 <button onclick="closePlayer()" class="text-[10px] font-black uppercase bg-red-600 text-white px-6 py-3 rounded-full flex items-center gap-2 shadow-lg shadow-red-600/20 active:scale-90 transition-all"><i data-lucide="chevron-down" class="w-4 h-4"></i> Minimize</button>
-                <button id="vault-btn" onclick="toggleFavorite()" class="p-3 bg-zinc-800 rounded-full text-white transition-colors hover:bg-zinc-700"><i data-lucide="heart" class="w-5 h-5"></i></button>
+                <div class="flex gap-2">
+                    <button id="snap-btn" onclick="toggleSnapshot()" class="p-3 bg-zinc-800 rounded-full text-white transition-colors hover:bg-zinc-700"><i data-lucide="download" class="w-5 h-5"></i></button>
+                    <button id="vault-btn" onclick="toggleFavorite()" class="p-3 bg-zinc-800 rounded-full text-white transition-colors hover:bg-zinc-700"><i data-lucide="heart" class="w-5 h-5"></i></button>
+                </div>
             </div>
             <div class="text-center px-4 max-w-md">
                 <div id="m-title" class="font-black uppercase truncate text-white text-xs tracking-tight"></div>
@@ -221,7 +224,7 @@
         <div class="flex-grow overflow-y-auto p-5 md:p-12 scrollbar-hide">
             <div class="max-w-6xl mx-auto">
                 <div id="offline-warning" class="hidden mb-6 p-4 bg-red-600/20 border border-red-600 rounded-2xl text-center">
-                    <p class="text-[10px] font-black uppercase text-red-500">Video Server Unreachable (Offline)</p>
+                    <p class="text-[10px] font-black uppercase text-red-500">Nexus Offline - Playing from Snapshot Cache</p>
                 </div>
                 <div class="aspect-video bg-black rounded-[32px] overflow-hidden border border-white/5 relative shadow-2xl">
                     <div id="iframe-sync" class="iframe-placeholder">
@@ -245,41 +248,7 @@
     </div>
 
     <script>
-        // ==========================================
-        // HELPERS
-        // ==========================================
-        window.iframeReady = function() { 
-            const frame = document.getElementById('video-frame');
-            const sync = document.getElementById('iframe-sync');
-            if (frame) frame.classList.add('loaded');
-            if (sync) {
-                sync.style.opacity = '0';
-                setTimeout(() => sync.classList.add('hidden'), 500);
-            }
-        };
-
-        const CURRENT_VERSION = "v13.0.0 (Guardian Update)";
-        const UPDATE_LOGS = [
-            {
-                date: "February 19, 2026",
-                title: 'Guardian & AI Integration',
-                notes: [
-                    "Feature: Implemented Guardian Service Worker for Offline browsing.",
-                    "Feature: Integrated Offline AI Assistant (🤖) for cine-recs.",
-                    "Logic: SnapVault metadata caching for offline viewing of titles.",
-                    "UI: Added connection status monitoring in footer."
-                ]
-            },
-            {
-                date: "February 18, 2026",
-                title: 'Infrastructure Patch',
-                notes: [
-                    "Fix: Fixed Source 2 (VidLink) and Source 3 (vidsrc.to) pathing logic.",
-                    "Logic: Implemented provider-specific URL routing for TV shows."
-                ]
-            }
-        ];
-
+        const CURRENT_VERSION = "v13.5.0 (Snapshot Guard)";
         const API_KEY = '5c7ced332aa33d7507e5d53bd818a963';
         
         const SOURCES = [
@@ -288,7 +257,7 @@
             { name: 'Ultra Source', url: 'https://vidsrc.to/embed', type: 'standard' },
             { name: 'Source 4', url:'https://vidsrcme.ru/embed', type: 'standard' }
         ];
-        
+
         let state = { 
             type: localStorage.getItem('cv-type') || 'movie', 
             page: 1, query: '', 
@@ -300,20 +269,15 @@
             isOffline: !navigator.onLine
         };
 
-        function renderUpdateLogs() {
-            document.getElementById('footer-version').innerText = `${CURRENT_VERSION} Patch Logs`;
-            const container = document.getElementById('logs-container');
-            container.innerHTML = UPDATE_LOGS.map(log => `
-                <div class="relative pl-6 border-l-2 border-red-600">
-                    <div class="absolute -left-[9px] top-0 w-4 h-4 bg-red-600 rounded-full border-4 border-[#09090b]"></div>
-                    <p class="text-[10px] font-black text-red-600 uppercase mb-1">${log.date}</p>
-                    <p class="text-sm font-black text-white mb-3">${log.title}</p>
-                    <ul class="text-[11px] text-zinc-500 space-y-3 leading-relaxed">
-                        ${log.notes.map(note => `<li>• <b class="text-white">${note.split(':')[0]}:</b> ${note.split(':')[1] || ''}</li>`).join('')}
-                    </ul>
-                </div>
-            `).join('');
-        }
+        window.iframeReady = function() { 
+            const frame = document.getElementById('video-frame');
+            const sync = document.getElementById('iframe-sync');
+            if (frame) frame.classList.add('loaded');
+            if (sync) {
+                sync.style.opacity = '0';
+                setTimeout(() => sync.classList.add('hidden'), 500);
+            }
+        };
 
         async function openPlayer(id, type, poster, name) {
             state.currentId = id; state.activePlayerType = type; state.currentPoster = poster; state.currentName = name;
@@ -329,7 +293,6 @@
             
             setTimeout(() => saveHistory(id, type, poster, name), 550);
 
-            // OFFLINE LOGIC: Use Snapshot if offline
             let data;
             if(state.isOffline && state.snapshots[id]) {
                 data = state.snapshots[id];
@@ -339,25 +302,19 @@
                 try {
                     const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=release_dates,content_ratings`);
                     data = await res.json();
-                    // SAVE TO SNAPSHOT
-                    state.snapshots[id] = data;
-                    localStorage.setItem('cv-snapshots', JSON.stringify(state.snapshots));
-                } catch(e) {
-                    if(state.snapshots[id]) data = state.snapshots[id];
-                }
+                } catch(e) { if(state.snapshots[id]) data = state.snapshots[id]; }
             }
             
             if(data) {
                 document.getElementById('m-title').innerText = name;
                 document.getElementById('m-desc').innerText = data.overview;
-                
                 const starCount = Math.round(data.vote_average/2);
                 document.getElementById('m-stars').innerHTML = `<i data-lucide="star" class="w-3 h-3 fill-yellow-500"></i>`.repeat(starCount) + ` ${data.vote_average.toFixed(1)}`;
-                
                 let pg = type === 'movie' ? (data.release_dates?.results?.find(r => r.iso_3166_1 === 'US')?.release_dates[0].certification || "PG-13") : (data.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || "TV-MA");
                 document.getElementById('m-pg').innerText = pg;
                 
                 updateVaultBtnIcon();
+                updateSnapBtnIcon();
                 
                 if(type === 'tv') {
                     document.getElementById('tv-controls').classList.remove('hidden');
@@ -375,38 +332,68 @@
             lucide.createIcons();
         }
 
+        // SNAPSHOT LOGIC
+        function toggleSnapshot() {
+            if(state.snapshots[state.currentId]) {
+                delete state.snapshots[state.currentId];
+            } else {
+                state.snapshots[state.currentId] = {
+                    id: state.currentId,
+                    type: state.activePlayerType,
+                    poster_path: state.currentPoster,
+                    title: state.currentName,
+                    overview: document.getElementById('m-desc').innerText,
+                    vote_average: parseFloat(document.getElementById('m-stars').innerText) || 0
+                };
+            }
+            localStorage.setItem('cv-snapshots', JSON.stringify(state.snapshots));
+            updateSnapBtnIcon();
+        }
+
+        function updateSnapBtnIcon() {
+            const isSnap = state.snapshots[state.currentId];
+            document.getElementById('snap-btn').className = isSnap ? 'p-3 bg-zinc-800 rounded-full download-active' : 'p-3 bg-zinc-800 rounded-full text-white';
+        }
+
         function refreshPlayer() {
             if(state.isOffline) return;
             const select = document.getElementById('player-source-select');
             const source = SOURCES[select.value];
             const frame = document.getElementById('video-frame');
-            
             frame.classList.remove('loaded');
             document.getElementById('iframe-sync').classList.remove('hidden');
-            document.getElementById('iframe-sync').style.opacity = '1';
-
-            let finalUrl = "";
-            if (state.activePlayerType === 'movie') {
-                finalUrl = `${source.url}/movie/${state.currentId}`;
-            } else {
-                finalUrl = `${source.url}/tv/${state.currentId}/${state.currentS}/${state.currentE}`;
-            }
-
+            let finalUrl = state.activePlayerType === 'movie' 
+                ? `${source.url}/movie/${state.currentId}`
+                : `${source.url}/tv/${state.currentId}/${state.currentS}/${state.currentE}`;
             if (source.name === 'Ultra Source') {
                 finalUrl = state.activePlayerType === 'movie' 
                     ? `https://vidsrc.to/embed/movie/${state.currentId}`
                     : `https://vidsrc.to/embed/tv/${state.currentId}/${state.currentS}/${state.currentE}`;
             }
-
             frame.src = finalUrl;
         }
 
-        function triggerSmartContinue() {
-            const last = state.watched[state.currentId];
-            if(last) {
-                document.getElementById('season-selector').value = last.s;
-                loadEpisodes(last.s, last.e);
+        async function loadContent(reset = true) {
+            if(state.isOffline) {
+                if(reset) document.getElementById('main-grid').innerHTML = '';
+                const items = Object.values(state.snapshots);
+                document.getElementById('main-grid').innerHTML = items.map(item => `
+                    <div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${item.type}', '${item.poster_path}', '${item.title.replace(/'/g, "\\'")}')">
+                        <img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover">
+                        <div class="p-4">
+                            <h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title}</h4>
+                            <span class="text-[9px] font-black text-green-500">SNAPVAULT CACHED</span>
+                        </div>
+                    </div>`).join('');
+                lucide.createIcons();
+                return;
             }
+            if(reset) { document.getElementById('main-grid').innerHTML = ''; window.scrollTo(0,0); }
+            let url = state.query ? `https://api.themoviedb.org/3/search/${state.type}?api_key=${API_KEY}&query=${encodeURIComponent(state.query)}&page=${state.page}` : `https://api.themoviedb.org/3/discover/${state.type}?api_key=${API_KEY}&sort_by=popularity.desc&page=${state.page}`;
+            const res = await fetch(url); const data = await res.json();
+            document.getElementById('main-grid').innerHTML += data.results.map(item => `<div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${state.type}', '${item.poster_path}', '${(item.title || item.name).replace(/'/g, "\\'")}')"><img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover" loading="lazy"><div class="p-4"><h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title || item.name}</h4><div class="flex items-center gap-2 mt-1"><i data-lucide="star" class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500"></i><span class="text-[9px] font-black text-zinc-500">${item.vote_average.toFixed(1)}</span></div></div></div>`).join('');
+            renderPagination(data.total_pages);
+            lucide.createIcons();
         }
 
         function saveHistory(id, type, poster, name) {
@@ -441,23 +428,6 @@
 
         function renderFavorites() {
             document.getElementById('vault-list').innerHTML = state.favorites.map(f => `<div onclick="openPlayer('${f.id}', '${f.type}', '${f.poster}', '${f.name.replace(/'/g, "\\'")}')" class="flex items-center gap-4 cursor-pointer bg-white/5 p-4 rounded-2xl hover:bg-white/10 transition-all group"><img src="https://image.tmdb.org/t/p/w92${f.poster}" class="w-12 rounded-lg shadow-md"><div class="flex-grow"><p class="text-xs font-black uppercase text-white group-hover:text-red-500 transition-colors">${f.name}</p><p class="text-[9px] text-zinc-500 font-bold uppercase">${f.type}</p></div></div>`).join('');
-        }
-
-        async function loadContent(reset = true) {
-            if(state.isOffline) {
-                // LOAD FROM SNAPSHOTS IF OFFLINE
-                if(reset) document.getElementById('main-grid').innerHTML = '';
-                const items = Object.values(state.snapshots).filter(s => (s.title || s.name));
-                document.getElementById('main-grid').innerHTML = items.map(item => `<div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${state.type}', '${item.poster_path}', '${(item.title || item.name).replace(/'/g, "\\'")}')"><img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover" loading="lazy"><div class="p-4"><h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title || item.name}</h4><div class="flex items-center gap-2 mt-1"><i data-lucide="star" class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500"></i><span class="text-[9px] font-black text-zinc-500">CACHED</span></div></div></div>`).join('');
-                return;
-            }
-
-            if(reset) { document.getElementById('main-grid').innerHTML = ''; window.scrollTo(0,0); }
-            let url = state.query ? `https://api.themoviedb.org/3/search/${state.type}?api_key=${API_KEY}&query=${encodeURIComponent(state.query)}&page=${state.page}` : `https://api.themoviedb.org/3/discover/${state.type}?api_key=${API_KEY}&sort_by=popularity.desc&page=${state.page}`;
-            const res = await fetch(url); const data = await res.json();
-            document.getElementById('main-grid').innerHTML += data.results.map(item => `<div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${state.type}', '${item.poster_path}', '${(item.title || item.name).replace(/'/g, "\\'")}')"><img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover" loading="lazy"><div class="p-4"><h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title || item.name}</h4><div class="flex items-center gap-2 mt-1"><i data-lucide="star" class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500"></i><span class="text-[9px] font-black text-zinc-500">${item.vote_average.toFixed(1)}</span></div></div></div>`).join('');
-            renderPagination(data.total_pages);
-            lucide.createIcons();
         }
 
         async function loadEpisodes(s, targetE = 1) {
@@ -500,7 +470,6 @@
 
         function closePlayer() { document.getElementById('player-modal').classList.remove('open'); document.getElementById('video-frame').src = ''; document.body.style.overflow = ''; }
         function togglePanel(id) { document.getElementById(id).classList.toggle('open'); }
-        
         function renderPagination(total) {
             const container = document.getElementById('pagination-numbers');
             container.innerHTML = '';
@@ -511,45 +480,23 @@
                 container.appendChild(b);
             }
         }
-        
         function loadMore() { state.page++; loadContent(false); }
         function clearAllData() { if(confirm("Reset Global Database?")) { localStorage.clear(); window.location.reload(); } }
 
-        // CONNECTION MONITORING
-        window.addEventListener('online', () => {
-            state.isOffline = false;
-            document.getElementById('status-dot').className = "w-2 h-2 bg-green-500 rounded-full animate-pulse";
-            document.getElementById('status-text').innerText = "System Online";
-            document.getElementById('offline-toast').classList.remove('visible');
-            loadContent(true);
-        });
+        window.addEventListener('online', () => { state.isOffline = false; document.getElementById('status-dot').className = "w-2 h-2 bg-green-500 rounded-full animate-pulse"; document.getElementById('status-text').innerText = "System Online"; document.getElementById('offline-toast').classList.remove('visible'); loadContent(true); });
+        window.addEventListener('offline', () => { state.isOffline = true; document.getElementById('status-dot').className = "w-2 h-2 bg-red-500 rounded-full"; document.getElementById('status-text').innerText = "System Offline"; document.getElementById('offline-toast').classList.add('visible'); loadContent(true); });
 
-        window.addEventListener('offline', () => {
-            state.isOffline = true;
-            document.getElementById('status-dot').className = "w-2 h-2 bg-red-500 rounded-full";
-            document.getElementById('status-text').innerText = "System Offline";
-            document.getElementById('offline-toast').classList.add('visible');
-            loadContent(true);
-        });
-
-        // SERVICE WORKER REGISTRATION
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('Guardian Error', err));
-            });
+            window.addEventListener('load', () => { navigator.serviceWorker.register('./service-worker.js').catch(e => console.log(e)); });
         }
 
         document.getElementById('player-source-select').innerHTML = SOURCES.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
         document.getElementById('search-input').addEventListener('input', (e) => { state.query = e.target.value; state.page = 1; loadContent(true); });
-        
         if(state.light) { document.body.classList.add('light-mode'); document.getElementById('mode-dot').style.transform = 'translateX(28px)'; }
 
-        renderUpdateLogs();
         updateType(state.type);
         renderFavorites();
         lucide.createIcons();
     </script>
 </body>
 </html>
-
-
