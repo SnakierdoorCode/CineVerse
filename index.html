@@ -1,204 +1,1174 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
-    <title>CineVault | Nexus Edition</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>CineVault | 2026</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2503/2503508.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script src="https://unpkg.com/lucide@latest">
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
     <style>
         :root { --accent: #e11d48; }
-        body { background-color: #020202; color: #f1f1f1; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .side-panel { 
-            position: fixed; right: 0; top: 0; z-index: 150; width: 100%; max-width: 450px;
-            transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #09090b; height: 100vh;
+        
+        body { 
+            background-color: #020202; 
+            color: #f1f1f1; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            overflow-x: hidden; 
+            overflow-y: auto;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.4s ease, color 0.4s ease;
         }
-        .side-panel.open { transform: translateX(0); }
+        /* Add space for the navbar so cards don't slide under it */
+#main-grid {
+    padding-bottom: 50px;
+    perspective:1200px;
+    transform-style: preserve-3d;
+    opacity: 1;
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s ease-out;
+    will-change: opacity, transform;
+    transform: translateY(0);
+    will-change: opacity, transform;
+}
+#main-grid.fading {
+    opacity: 0;
+    transform: translateY(10px); /* Slight slide down effect */
+}
+
+/* If you are using a fixed nav, ensure it has a high z-index */
+nav {
+    position: fixed !important;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 10 !important; /* Extremely high to stay above 3D pops */
+}
+
+        /* LIGHT MODE OVERRIDES */
+        body.light-mode { background-color: #f8fafc; color: #0f172a; }
+        .light-mode .bg-zinc-900\/80 { background-color: rgba(255,255,255,0.9); border-color: #e2e8f0; }
+        .light-mode .side-panel, .light-mode #player-modal { background-color: #ffffff; color: #0f172a; border-left: 1px solid #e2e8f0; }
+        .light-mode .poster-card { background-color: #fff; border-color: #e2e8f0; }
+        .light-mode .text-white { color: #0f172a !important; }
+        .light-mode footer { border-top: 1px solid #e2e8f0; color: #64748b; }
+       #custom-red-cursor {
+    width: 20px;
+    height: 20px;
+    background-color: #ff0000; /* Pure Red */
+    border: 2px solid #ffffff; /* White ring for visibility on dark posters */
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none; /* Vital: lets you click "through" the red dot */
+    z-index: 10000; /* Stays above everything */
+    box-shadow: 0 0 15px #ff0000, 0 0 30px rgba(255, 0, 0, 0.4);
+    transform: translate(-50%, -50%);
+    display: none; /* Hidden on mobile, shown via JS */
+}
+
+/* Ensure posters don't overlap the nav */
+main {
+    /* This pushes the ENTIRE content area (History + Grid) down */
+    /* 260px is the "Sweet Spot" for your tall navbar */
+    margin-top: 130px !important; 
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Adds space between History and Movie Grid */
+}
+
+        /* PLAYER DRAWER ANIMATION */
         #player-modal {
-            position: fixed; inset: 0; z-index: 100; transform: translateY(100%);
+            position: fixed; inset: 0; z-index: 30;
+            transform: translateY(100%);
             transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-            display: flex; flex-direction: column; background: #000;
+            display: flex; flex-direction: column;
+            will-change: transform;
         }
         #player-modal.open { transform: translateY(0); }
-        .poster-card { border-radius: 16px; overflow: hidden; transition: 0.3s; cursor: pointer; }
-        .poster-card:hover { transform: scale(1.03); }
-        .ep-btn { background: #27272a; color: #fff; min-width: 44px; padding: 10px; border-radius: 8px; font-weight: 800; }
-        .ep-btn.active { background: var(--accent); }
+     
+        #dub-toggle-btn.active-dub {
+    background: rgba(225, 29, 72, 0.2) !important;
+    color: #e11d48 !important;
+    border: 1px solid rgba(225, 29, 72, 0.3);
+}
+
+/* Prevents metadata from squishing on small laptops */
+#m-title {
+    min-width: 150px;
+}
+
+
+        /* IFRAME SMOOTH REVEAL */
+        #video-frame { opacity: 0; transition: opacity 0.8s ease; }
+        #video-frame.loaded { opacity: 1; }
+        
+        .iframe-placeholder {
+            position: absolute; inset: 0; background: #000;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10; transition: opacity 0.5s ease;
+        }
+
+
+        /* SIDE PANELS */
+        .side-panel { 
+            position: fixed; right: 0; top: 0; z-index: 21; width: 100%; max-width: 450px;
+            transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #09090b; height: 100vh; box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+        .side-panel.open { transform: translateX(0); }
+
+
+        /* UI ELEMENTS */
+        .spinner { width: 35px; height: 35px; border: 3px solid rgba(225, 29, 72, 0.1); border-left-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+.poster-card { 
+    /* Remove your old transition and use this snappier one */
+    transition: transform 0.2s cubic-bezier(0.2, 1, 0.3, 1), box-shadow 0.3s ease; 
+    cursor: pointer; 
+    border-radius: 16px; 
+    overflow: visible; /* Changed from hidden so the card can 'break' the frame */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    background: #111;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transform-style: preserve-3d;
+    transition: transform 0.2s cubic-bezier(0.2, 1, 0.3, 1), box-shadow 0.3s ease;
+    will-change: transform;
+    cursor: pointer;
+}
+.poster-card img {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    border-radius: 24px; /* The specific curve you wanted */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    display: block;
+}
+
+
+.poster-card:hover { 
+    /* This adds a shadow that makes it look like it's lifting off the page */
+    box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+    z-index: 20;
+    /* 3. THE RED GLOW EFFECT */
+    border-color: rgba(225, 29, 72, 0.5);
+    box-shadow: 0 0 30px rgba(225, 29, 72, 0.2), 
+                0 40px 80px rgba(0, 0, 0, 0.8);
+}
+        .ep-btn { background: #27272a; color: #fff; font-weight: 800; transition: 0.2s; min-width: 44px; min-height: 44px; border-radius: 10px; font-size: 11px; }
+        .ep-btn.active { background: var(--accent) !important; box-shadow: 0 4px 10px rgba(225, 29, 72, 0.4); }
+        .ep-btn.watched { border: 1px solid rgba(225, 29, 72, 0.3); color: #71717a; opacity: 0.5; }
+
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .fav-active { color: #e11d48 !important; fill: #e11d48; }
+
+
+        footer { border-top: 1px solid rgba(255,255,255,0.05); }
+
+
+        /* OFFLINE INDICATOR */
+        #offline-toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #e11d48; color: white; padding: 12px 24px; border-radius: 100px;
+            font-[10px] font-black uppercase tracking-widest z-[200]; transition: transform 0.5s ease;
+        }
+        #offline-toast.visible { transform: translateX(-50%) translateY(0); }
     </style>
-</head>
-<body class="p-4 md:p-10">
-
-    <nav class="flex flex-col lg:flex-row items-center justify-between mb-8 gap-6 bg-zinc-900/80 p-6 rounded-3xl border border-white/5 backdrop-blur-xl sticky top-2 z-40">
-        <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-black italic text-white">CINE<span class="text-red-600">VAULT</span></h1>
-        </div>
-        
-        <div class="flex gap-2">
-            <button onclick="togglePanel('ai-panel')" class="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 transition-all"><i data-lucide="bot"></i></button>
-            <button onclick="togglePanel('history-panel')" class="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 transition-all"><i data-lucide="history"></i></button>
-            <button onclick="togglePanel('favorites-panel')" class="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 transition-all"><i data-lucide="heart"></i></button>
-        </div>
-    </nav>
-
-    <div id="continue-watching" class="mb-12 hidden">
-        <h3 class="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-4">Resume Playback</h3>
-        <div id="history-grid" class="flex gap-4 overflow-x-auto pb-4"></div>
-    </div>
-
-    <main id="main-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"></main>
-
-    <div id="ai-panel" class="side-panel flex flex-col border-l border-white/10">
-        <div class="p-6 border-b border-white/5 flex justify-between items-center">
-            <h3 class="font-black text-white">NEXUS AI</h3>
-            <button onclick="togglePanel('ai-panel')"><i data-lucide="x"></i></button>
-        </div>
-        <iframe src="https://snakierdoorcode.github.io/CineVerse/AI.html" class="flex-grow w-full border-none"></iframe>
-    </div>
-
-    <div id="player-modal">
-        <div class="p-4 flex justify-between items-center bg-zinc-900">
-            <button onclick="closePlayer()" class="bg-red-600 px-4 py-2 rounded-lg font-black text-xs uppercase">Close</button>
-            <div id="m-title" class="font-bold text-sm uppercase"></div>
-            <button id="snap-btn" onclick="toggleSnapshot()" class="p-2 bg-zinc-800 rounded-full"><i data-lucide="download"></i></button>
-        </div>
-        <div class="flex-grow overflow-y-auto p-4">
-            <div class="aspect-video bg-black rounded-xl overflow-hidden mb-6">
-                <iframe id="video-frame" class="w-full h-full" allowfullscreen></iframe>
+  </head>
+  <body class="p-4 md:p-10 flex flex-col min-h-screen">
+    <div id="auth-overlay" class="fixed inset-0 z-[9999] bg-[#020202] flex items-center justify-center p-6">
+    <div class="w-full max-w-md bg-zinc-900/50 border border-white/10 p-10 rounded-[32px] backdrop-blur-2xl shadow-2xl relative overflow-hidden">
+        <div class="relative z-10 flex flex-col items-center">
+            <div class="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-red-600/40">
+                <i data-lucide="shield-check" class="text-white w-8 h-8"></i>
             </div>
-            <div id="tv-controls" class="hidden grid grid-cols-6 gap-2 mb-10"></div>
-            <p id="m-desc" class="text-zinc-400 text-sm italic"></p>
+            <h2 class="text-3xl font-black tracking-tighter uppercase italic text-white mb-2 text-center">Nexus <span class="text-red-600">Access</span></h2>
+            <div class="w-full space-y-4 mt-6">
+                <input id="auth-email" type="email" placeholder="Terminal ID (Email)" class="w-full bg-black/50 border border-white/10 px-6 py-4 rounded-2xl outline-none focus:border-red-600 transition-all text-sm text-white">
+                <input id="auth-pass" type="password" placeholder="Access Cipher (Password)" class="w-full bg-black/50 border border-white/10 px-6 py-4 rounded-2xl outline-none focus:border-red-600 transition-all text-sm text-white">
+                <div class="flex gap-3">
+                    <button onclick="handleAuth('login')" class="flex-1 py-4 bg-red-600 text-white text-[11px] font-black uppercase rounded-2xl active:scale-95 transition-all">Login</button>
+                    <button onclick="handleAuth('signup')" class="flex-1 py-4 bg-zinc-800 text-white text-[11px] font-black uppercase rounded-2xl active:scale-95 transition-all">Sign Up</button>
+                </div>
+            </div>
+            <p id="auth-error" class="text-red-500 text-[10px] font-bold uppercase mt-6 hidden text-center"></p>
         </div>
     </div>
-
-    <div id="history-panel" class="side-panel p-6 overflow-y-auto">
-        <div class="flex justify-between mb-6">
-            <h3 class="font-black">HISTORY</h3>
-            <button onclick="togglePanel('history-panel')"><i data-lucide="x"></i></button>
-        </div>
-        <div id="history-list-full" class="space-y-4"></div>
+</div>
+    <div id="custom-red-cursor">
     </div>
+    <div id="offline-toast">Offline Mode Active - Browsing Cache</div>
+    <nav class="flex flex-col lg:flex-row items-center justify-between mb-8 gap-6 bg-zinc-900/80 p-4 lg:p-6 rounded-3xl border border-white/5 backdrop-blur-xl fixed top-4 left-4 right-4 md:left-10 md:right-10">
+      <div class="flex items-center justify-between w-full lg:w-auto gap-8">
+        <div class="flex items-center gap-2">
+          <div class="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/30">
+            <i data-lucide="clapperboard" class="text-white w-6 h-6">
+            </i>
+          </div>
+          <h1 class="text-2xl font-black tracking-tighter uppercase italic text-white">CINE<span class="text-red-600">VAULT</span>
+          <span class ="text-white">™</span>
+        </h1>
+      </div>
+      <div class="flex bg-black/40 rounded-2xl p-1.5 border border-white/10">
+        <button onclick="updateType('movie')" id="btn-movie" class="px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all">Movies</button>
+        <button onclick="updateType('tv')" id="btn-tv" class="px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all">TV Shows</button>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 w-full lg:w-auto">
+      <div class="relative flex-1 lg:w-96">
+        <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-zinc-500">
+        </i>
+        <input id="search-input" type="text" placeholder="Search movies or shows..." class="w-full bg-black/50 border border-white/10 px-12 py-3.5 rounded-2xl outline-none focus:border-red-600 transition-all text-sm text-white">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="togglePanel('ai-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all shadow-lg shadow-red-600/10">
+          <i data-lucide="bot" class="w-5 h-5">
+          </i>
+        </button>
+        <button onclick="togglePanel('history-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all">
+          <i data-lucide="history" class="w-5 h-5">
+          </i>
+        </button>
+        <button onclick="togglePanel('favorites-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all">
+          <i data-lucide="heart" class="w-5 h-5">
+          </i>
+        </button>
+        <button onclick="togglePanel('settings-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all">
+          <i data-lucide="settings" class="w-5 h-5">
+          </i>
+        </button>
+        <button onclick="togglePanel('updates-panel')" class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all">
+          <i data-lucide="megaphone" class="w-5 h-5">
+          </i>
+        </button>
+        <a href="https://forms.gle/EncTmJXGFowM2EUKA" target="_blank" rel="noopener noreferrer">
+          <button class="p-3.5 bg-zinc-800/50 rounded-2xl hover:bg-red-600 text-white transition-all shadow-lg shadow-red-600/10">
+            <i data-lucide="send" class="w-5 h-5">
+            </i>
+          </button>
+        </a>
+      </div>
+    </div>
+  </nav>
+  <main class="flex-grow pb-16">
+    <div id="continue-watching" class="mb-12 hidden">
+      <h3 class="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em] mb-5 flex items-center gap-3">
+        <span class="w-8 h-[1px] bg-red-600">
+        </span>
+        <span id="history-label">Movie</span> Progress
+            </h3>
+        <div id="history-grid" class="flex gap-5 overflow-x-auto pb-6 scrollbar-hide">
+        </div>
+      </div>
+      <div id="main-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-5 lg:gap-8">
+      </div>
+      <div class="flex flex-col items-center gap-6 mt-16 py-10">
+        <div id="pagination-numbers" class="flex flex-wrap justify-center gap-2">
+        </div>
+        <button onclick="loadMore()" class="px-10 py-4 bg-red-600 text-white text-[11px] font-black uppercase rounded-full shadow-xl shadow-red-600/30 active:scale-95 transition-all">Explore More</button>
+      </div>
+    </main>
+    <footer class="mt-auto py-10 px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-zinc-600">
+      <div class="flex flex-col items-center md:items-start gap-1">
+        <p class="text-[10px] font-black uppercase tracking-widest text-zinc-400">Made by SD</p>
+        <a href="https://forms.gle/dDiRuNRgkJ1K9yXf7" target="_blank" rel="noopener noreferrer">
+            Suggestions forum
+            </a>
+        <p class="text-[9px] font-bold uppercase tracking-tighter">©   2026 CineVault   Nexus  •  All Rights Reserved</p>
+        <br>
+        <p class="text-[9px] font-bold uppercase tracking-tighter">DMCA protected so don't try to steal the code to this site</p>
+      </div>
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+          <span id="status-dot" class="w-2 h-2 bg-green-500 rounded-full animate-pulse">
+          </span>
+          <span id="status-text" class="text-[9px] font-black uppercase tracking-widest">System Online</span>
+        </div>
+        <p id="footer-version" class="text-[9px] font-black uppercase tracking-widest cursor-pointer hover:text-red-500 transition-colors" onclick="togglePanel('updates-panel')">v0.0.0 Patch Logs</p>
+      </div>
+    </footer>
+    <div id="ai-panel" class="side-panel flex flex-col border-l border-white/10">
+      <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <h3 class="font-black uppercase italic text-lg text-white">CineVault Assistant</h3>
+        <button onclick="togglePanel('ai-panel')" class="text-zinc-500 hover:text-white">
+          <i data-lucide="x">
+          </i>
+        </button>
+      </div>
+      <div class="flex-grow">
+        <iframe src="https://cdn.jsdelivr.net/gh/SnakierdoorCode/HtmlAI-@main/Ai.html" class="w-full h-full border-none">
+        </iframe>
+      </div>
+    </div>
+    <div id="settings-panel" class="side-panel flex flex-col border-l border-white/10">
+      <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <h3 class="font-black uppercase italic text-lg text-white">System Settings</h3>
+        <button onclick="togglePanel('settings-panel')" class="text-zinc-500 hover:text-white">
+          <i data-lucide="x">
+          </i>
+        </button>
+      </div>
+      <div class="p-8 space-y-8">
+        <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+          <div>
+            <p class="text-xs font-black uppercase text-white">Appearance</p>
+            <p class="text-[10px] text-zinc-500 uppercase mt-1">Light Mode Toggle</p>
+          </div>
+          <button onclick="toggleLightMode()" id="mode-btn" class="w-14 h-7 bg-zinc-800 rounded-full p-1 transition-colors relative">
+            <div id="mode-dot" class="w-5 h-5 bg-white rounded-full transition-transform">
+            </div>
+          </button>
+        </div>
+        <button onclick="clearAllData()" class="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl text-[10px] font-black uppercase border border-red-600/20 hover:bg-red-600 hover:text-white transition-all">Wipe Global Cache</button>
+      </div>
+    </div>
+    <div id="updates-panel" class="side-panel flex flex-col border-l border-white/10">
+      <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <h3 class="font-black uppercase italic text-lg text-white">Nexus Logs</h3>
+        <button onclick="togglePanel('updates-panel')" class="text-zinc-500 hover:text-white">
+          <i data-lucide="x">
+          </i>
+        </button>
+      </div>
+      <div id="logs-container" class="p-8 overflow-y-auto space-y-12">
+      </div>
+    </div>
+    <div id="favorites-panel" class="side-panel flex flex-col border-l border-white/10">
+      <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <h3 class="font-black uppercase italic text-lg text-white">Your Vault</h3>
+        <button onclick="togglePanel('favorites-panel')" class="text-zinc-500 hover:text-white">
+          <i data-lucide="x">
+          </i>
+        </button>
+      </div>
+      <div id="vault-list" class="p-8 overflow-y-auto space-y-4">
+      </div>
+    </div>
+    <div id="history-panel" class="side-panel flex flex-col border-l border-white/10">
+      <div class="p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
+        <h3 class="font-black uppercase italic text-lg text-white">Watch History</h3>
+        <button onclick="togglePanel('history-panel')" class="text-zinc-500 hover:text-white">
+          <i data-lucide="x">
+          </i>
+        </button>
+      </div>
+      <div id="history-list-full" class="p-8 overflow-y-auto space-y-4">
+      </div>
+    </div>
+    <div id="player-modal" class="bg-zinc-950 shadow-[-20px_0_50px_rgba(0,0,0,0.8)]">
+      <div class="p-5 flex flex-col sm:flex-row justify-between items-center bg-zinc-900/50 border-b border-white/5 gap-5 backdrop-blur-md">
+        <div class="flex items-center gap-4 w-full sm:w-auto justify-between">
+          <button onclick="closePlayer()" class="text-[10px] font-black uppercase bg-red-600 text-white px-6 py-3 rounded-full flex items-center gap-2 shadow-lg shadow-red-600/20 active:scale-90 transition-all">
+            <i data-lucide="chevron-down" class="w-4 h-4">
+            </i> Minimize</button>
+            <button id="vault-btn" onclick="toggleFavorite()" class="p-3 bg-zinc-800 rounded-full text-white transition-colors hover:bg-zinc-700">
+              <i data-lucide="heart" class="w-5 h-5">
+              </i>
+            </button>
+          </div>
+          <div class="text-center px-4 max-w-md">
+            <div id="m-title" class="font-black uppercase truncate text-white text-xs tracking-tight">
+            </div>
+            <div id="m-meta" class="flex items-center justify-center gap-4 mt-1.5">
+              <span id="m-stars" class="text-yellow-500 text-[10px] font-black flex items-center gap-1">
+              </span>
+              <span id="m-pg" class="bg-red-600/10 text-red-500 text-[9px] px-2.5 py-1 rounded-md font-black border border-red-600/20 uppercase tracking-tighter">
+              </span>
+              <button id="smart-continue-btn" onclick="triggerSmartContinue()" class="hidden bg-white text-black text-[9px] px-3 py-1 rounded-md font-black uppercase hover:bg-red-600 hover:text-white transition-all">Smart Continue</button>
+            </div>
+          </div>
+          <select id="player-source-select" onchange="refreshPlayer()" class="bg-black border border-white/10 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase text-white outline-none focus:border-red-600 transition-all cursor-pointer">
+          </select>
+        </div>
+        <div class="flex-grow overflow-y-auto p-5 md:p-12 scrollbar-hide">
+          <div class="max-w-6xl mx-auto">
+            <div id="offline-warning" class="hidden mb-6 p-4 bg-red-600/20 border border-red-600 rounded-2xl text-center">
+              <p class="text-[10px] font-black uppercase text-red-500">Video Server Unreachable (Offline)</p>
+            </div>
+            <div class="aspect-video bg-black rounded-[32px] overflow-hidden border border-white/5 relative shadow-2xl">
+              <div id="iframe-sync" class="iframe-placeholder">
+                <div class="flex flex-col items-center gap-5">
+                  <div class="spinner">
+                  </div>
+                  <p class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Decoding Nexus Stream...</p>
+                </div>
+              </div>
+<iframe
+    id="video-frame"
+    class="w-full h-full"
+    allowfullscreen
+    frameborder="0"
+    onload="iframeReady()"
+></iframe>
+            </div>
+            <div id="tv-controls" class="hidden space-y-8 mt-12">
+              <div class="flex items-center justify-between border-b border-white/5 pb-5">
+                <h4 class="text-[11px] font-black uppercase text-zinc-400 tracking-widest">Episode Terminal</h4>
+                <select id="season-selector" onchange="loadEpisodes(this.value)" class="bg-zinc-800 rounded-xl text-white text-[10px] font-black px-4 py-2 outline-none border border-white/10 cursor-pointer">
+                </select>
+              </div>
+              <div id="episode-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-3 pb-24">
+              </div>
+            </div>
+            <div id="m-desc" class="text-zinc-500 text-sm leading-relaxed mt-12 max-w-3xl italic border-l-4 border-red-600/50 pl-6 mb-20">
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
 
-    <script>
-        const API_KEY = '5c7ced332aa33d7507e5d53bd818a963';
-        const IMG_PATH = 'https://image.tmdb.org/t/p/w500';
+    //-------------------------------------
+    // Konami Code
+    //-------------------------------------
+(function() {
+    // --- 1. Configuration ---
+    const KONAMI_CODE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+    let keySequence = [];
+    let phraseBuffer = '';
+
+    // --- 2. CSS Injection (Animations & UI) ---
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes cv-toast-in {
+            from { opacity: 0; transform: translate(-50%, -20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @keyframes cv-glitch {
+            0% { transform: translate(3px,0) skew(1deg); filter: hue-rotate(90deg); }
+            20% { transform: translate(-3px,0) skew(-1deg); }
+            100% { transform: translate(0); filter: hue-rotate(0deg); }
+        }
+        .cv-toast {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: #000; border: 1px solid #00ff41; color: #00ff41;
+            padding: 15px 30px; z-index: 100000; font-family: monospace;
+            font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.4); pointer-events: none;
+            animation: cv-toast-in 0.4s ease-out;
+        }
+        .matrix-active { animation: cv-glitch 0.2s 3; }
+    `;
+    document.head.appendChild(style);
+
+    // --- 3. UI Components ---
+    function showDiscovery(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'cv-toast';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+    }
+
+    // --- 4. Matrix Rain Engine ---
+    function launchMatrix() {
+        if (document.getElementById('mx-canvas')) return;
+        const canvas = document.createElement('canvas');
+        canvas.id = 'mx-canvas';
+        canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;opacity:0.5;';
+        document.body.appendChild(canvas);
         
-        let state = {
-            history: JSON.parse(localStorage.getItem('cv-history') || '[]'),
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const nums = '0123456789';
+        const katakana = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+        const alphabet = katakana + latin + nums;
+
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const rainDrops = new Array(Math.floor(columns)).fill(1);
+
+        function render() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    rainDrops[i] = 0;
+                }
+                rainDrops[i]++;
+            }
+        }
+        const effect = setInterval(render, 30);
+        setTimeout(() => { clearInterval(effect); canvas.remove(); }, 8000);
+    }
+
+    // --- 5. Event Listeners ---
+    window.addEventListener('keydown', (e) => {
+        // Konami Logic
+        keySequence.push(e.code);
+        if (keySequence.length > KONAMI_CODE.length) keySequence.shift();
+        
+        if (keySequence.join(',') === KONAMI_CODE.join(',')) {
+            showDiscovery('⌘ KONAMI CODE ACTIVATED — GOD MODE');
+            document.body.classList.add('matrix-active');
+            launchMatrix();
+            setTimeout(() => document.body.classList.remove('matrix-active'), 1000);
+            keySequence = [];
+        }
+
+        // Secret Phrase Logic (Type 'matrix' or 'neo' anywhere)
+        if (e.key.length === 1) {
+            phraseBuffer += e.key.toLowerCase();
+            if (phraseBuffer.length > 10) phraseBuffer = phraseBuffer.slice(-10);
+            
+            if (phraseBuffer.includes('matrix')) {
+                showDiscovery('◉ THERE IS NO SPOON...');
+                launchMatrix();
+                phraseBuffer = '';
+            }
+            if (phraseBuffer.includes('neo')) {
+                showDiscovery('🐇 WAKE UP, NEO...');
+                document.body.classList.add('matrix-active');
+                setTimeout(() => document.body.classList.remove('matrix-active'), 1000);
+                phraseBuffer = '';
+            }
+        }
+    });
+})();
+
+
+                const firebaseConfig = {
+    apiKey: "AIzaSyB0kYnycxxzIdFjhX-a_aiEHq7RgxSdUGA",
+    authDomain: "cineverse-678c6.firebaseapp.com",
+    projectId: "cineverse-678c6",
+    storageBucket: "cineverse-678c6.firebasestorage.app",
+    messagingSenderId: "620897218771",
+    appId: "1:620897218771:web:cbb122a9d78019327ca426",
+    measurementId: "G-96DQH5WYJ4"
+};
+
+// Initialize
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const analytics = firebase.analytics();
+analytics.logEvent('testing_connection', { status: 'active'});
+
+// THE GATEKEEPER logic
+auth.onAuthStateChanged((user) => {
+    const overlay = document.getElementById('auth-overlay');
+    if (user) {
+        overlay.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        analytics.setUserId(user.uid);
+        analytics.setUserProperties({
+             user_id: user.uid,
+             access_time: new Data().toISOString()
+        });
+    
+        analytics.logEvent('login', { method: 'Firebase' });
+        
+        // Wrap in try/catch to prevent script crashes if Analytics is blocked by ad-block
+        try {
+            analytics.setUserId(user.uid);
+            analytics.logEvent('login', { method: 'Firebase Auth' });
+            console.log("Tracking: Login Sent");
+        } catch(e) {
+            console.warn("Analytics blocked or not ready:", e);
+        }
+
+        // Call your main loader (Fix the name here to match your loading function)
+        if (typeof loadContent === 'function') loadContent(true);
+    } else {
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    lucide.createIcons();
+});
+
+async function handleAuth(mode) {
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
+    const errorEl = document.getElementById('auth-error');
+    
+    if (!email || !pass) return;
+
+    try {
+        errorEl.classList.add('hidden');
+        let userCredential;
+        
+        if (mode === 'login') {
+            userCredential = await auth.signInWithEmailAndPassword(email, pass);
+        } else {
+            userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+            // SAVE THE NEW USER TO FIRESTORE
+            await db.collection('users').doc(userCredential.user.uid).set({
+                email: email,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastActive: Date.now()
+            });
+        }
+    } catch (error) {
+        errorEl.innerText = error.message.toUpperCase();
+        errorEl.classList.remove('hidden');
+    }
+}
+
+
+        //===========================================
+        // Smooth Fade in
+        //===========================================
+        async function updateType(type) {
+    const grid = document.getElementById('main-grid');
+    
+    // 1. Trigger the fade out
+    grid.classList.add('fading');
+
+    // 2. Wait 400ms (the length of our CSS transition)
+    setTimeout(async () => {
+        state.type = type;
+        state.page = 1;
+        localStorage.setItem('cv-type', type);
+
+        // Clear the grid and fetch new data while it's invisible
+        grid.innerHTML = ''; 
+        await fetchMovies(); // Replace this with whatever your fetch function is named
+
+        // 3. Trigger the fade in
+        grid.classList.remove('fading');
+        
+        // Update the red/black button colors
+        updateButtonUI(); 
+    }, 400); 
+}
+        // ==========================================
+        // Movie Pop up 
+        // ==========================================
+
+document.addEventListener('mousemove', (e) => {
+    const card = e.target.closest('.poster-card');
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left; 
+    const y = e.clientY - rect.top;
+
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Opposite tilt math
+    const rotateX = (y - centerY) / 10; 
+    const rotateY = (centerX - x) / 10;
+
+    // THE POP: rotate it AND pull it 60px toward the user
+    card.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(60px) scale(1.1)`;
+});
+
+document.addEventListener('mouseout', (e) => {
+    const card = e.target.closest('.poster-card');
+    if (card) {
+        // Reset to flat
+        card.style.transform = `perspective(1200px) rotateX(0deg) rotateY(0deg) translateZ(0px) scale(1)`;
+    }
+});
+
+        // ==========================================
+        // HELPERS
+        // ==========================================
+        window.iframeReady = function() { 
+            const frame = document.getElementById('video-frame');
+            const sync = document.getElementById('iframe-sync');
+            if (frame) frame.classList.add('loaded');
+            if (sync) {
+                sync.style.opacity = '0';
+                setTimeout(() => sync.classList.add('hidden'), 500);
+            }
+        };
+
+        // ==========================================
+        // 1. FIREBASE CONFIG
+        // ==========================================
+
+        const CURRENT_VERSION = "v13.0.0 (Guardian Update)";
+        const UPDATE_LOGS = [
+            {
+               date: "March 10th, 2026",
+               title: 'Visual Core Overhaul',
+               notes: [
+               "NEXUS V13:",
+               "UI: Integrated 3D Inverse-Pop physics for all movie posters.",
+               "UI: Dynamic Red Glow engine that responds to cursor movement.",
+               "UI: Implemented System-Wide Red Cursor for better thematic consistency.",
+               "UI: Refined Geometry—rounded movie card corners (24px) for a modern aesthetic.",
+               "Fix: Resolved layout overlapping issues with the fixed navigation bar.",
+               "Fix: Patched CSS bug causing accidental white background in dark mode."
+                 ] 
+            },
+            {
+               date: "March 10th, 2026",
+               title: 'Visual Core & UI Cleanup',
+               notes: [
+               "QOL: Fixed the background logic for Movie/TV toggle buttons.",
+               "UI: Implemented System-Wide Red Cursor for better thematic consistency.",
+               "Fix: Resolved layout overlapping issues with the fixed navigation bar.",
+               "Fix: Patched CSS bug causing accidental white background in dark mode."
+                 ]
+            },
+            {
+                date: "March 4th, 2026",
+                title: 'Small QOL Update.',
+                notes: [
+                    `QOL: Added a Suggestions tab so you can recommend things from features
+                     to whole new sites look down at the footer (bottom of the page) to find
+                     it. Also added a button for it. Added DMCA so site is protected`,
+                ]
+            },
+            {
+                date: "February 19, 2026",
+                title: 'Guardian & AI Integration',
+                notes: [
+                    "Feature: Implemented Guardian Service Worker for Offline browsing.",
+                    "Feature: Integrated Offline AI Assistant (🤖) for cine-recs.",
+                    "Logic: SnapVault metadata caching for offline viewing of titles.",
+                    "UI: Added connection status monitoring in footer."
+                ]
+            },
+            {
+                date: "February 18, 2026",
+                title: 'Infrastructure Patch',
+                notes: [
+                    "Fix: Fixed Source 2 (VidLink) and Source 3 (vidsrc.to) pathing logic.",
+                    "Logic: Implemented provider-specific URL routing for TV shows."
+                ]
+            }
+        ];
+
+
+        const API_KEY = '5c7ced332aa33d7507e5d53bd818a963';
+        
+const SOURCES = [
+    { name: 'Primary Server', url: 'https://vidsrc.cc/v2/embed', type: 'standard' },
+    { name: 'Primary Dubbed', url: 'https://vidsrc.cc/v2/embed', type: 'dub' },
+    { name: 'Nexus Link', url: 'https://vidlink.pro/embed', type: 'vidlink' },
+    { name: 'Ultra Source', url: 'https://vidsrc.to/embed', type: 'standard' },
+    { name: 'Alpha Server', url: 'https://embed.su/embed', type: 'standard' },
+    { name: 'Delta Source', url: 'https://vidsrc.xyz/embed', type: 'standard' },
+    { name: 'srcme.ru', url: 'https://vidsrcme.ru/embed', type: 'dub' },
+    { name: 'SuperEmbed', url: 'https://multiembed.mov', type: 'standard' },
+    { name: 'VidBinge', url: 'https://www.vidbinge.to', type: 'standard' },
+    { name: '2Embed', url: 'https://www.2embed.cc/embed', type: 'standard' },
+    { name: 'Smashy Stream', url: 'https://embed.smashystream.com', type: 'standard' },
+    { name: 'VidSrc.me', url: 'https://vidsrc.me/embed', type: 'standard' },
+    { name: 'VidSrc.rip', url: 'https://vidsrc.rip/embed', type: 'standard' },
+    { name: 'VidSrc.stream', url: 'https://vidsrc.stream/embed', type: 'standard' }
+];
+        
+        let state = { 
+            type: localStorage.getItem('cv-type') || 'movie', 
+            page: 1, query: '', 
+            history: JSON.parse(localStorage.getItem('cv-history') || '[]'), 
+            favorites: JSON.parse(localStorage.getItem('cv-favs') || '[]'),
+            watched: JSON.parse(localStorage.getItem('cv-watched') || '{}'),
+            light: localStorage.getItem('cv-light') === 'true',
             snapshots: JSON.parse(localStorage.getItem('cv-snapshots') || '{}'),
             isOffline: !navigator.onLine
         };
 
-        async function loadContent() {
-            const grid = document.getElementById('main-grid');
-            grid.innerHTML = '';
+
+        function renderUpdateLogs() {
+            document.getElementById('footer-version').innerText = `${CURRENT_VERSION} Patch Logs`;
+            const container = document.getElementById('logs-container');
+            container.innerHTML = UPDATE_LOGS.map(log => `
+                <div class="relative pl-6 border-l-2 border-red-600">
+      <div class="absolute -left-[9px] top-0 w-4 h-4 bg-red-600 rounded-full border-4 border-[#09090b]">
+      </div>
+      <p class="text-[10px] font-black text-red-600 uppercase mb-1">${log.date}</p>
+      <p class="text-sm font-black text-white mb-3">${log.title}</p>
+      <ul class="text-[11px] text-zinc-500 space-y-3 leading-relaxed">
+                        ${log.notes.map(note => `<li>• <b class="text-white">${note.split(':')[0]}:</b> ${note.split(':')[1] || ''}</li>`).join('')}
+                    </ul>
+    </div>
+            `).join('');
+        }
+
+
+        async function openPlayer(id, type, poster, name) {
+            state.currentId = id; state.activePlayerType = type; state.currentPoster = poster; state.currentName = name;
+            analytics.logEvent('view_item', { 
+            item_id: id, 
+            item_name: name, 
+            content_type: type 
+
+           
+            });
+            document.getElementById('player-modal').classList.add('open');
+            document.body.style.overflow = 'hidden';
             
-            // If offline, only show snapshots
-            if (state.isOffline) {
-                Object.values(state.snapshots).forEach(item => {
-                    grid.innerHTML += createCard(item);
-                });
+            const frame = document.getElementById('video-frame');
+            frame.classList.remove('loaded');
+            frame.src = '';
+            
+            document.getElementById('iframe-sync').classList.remove('hidden');
+            document.getElementById('iframe-sync').style.opacity = '1';
+            
+            setTimeout(() => saveHistory(id, type, poster, name), 550);
+ 
+                       try {
+        analytics.logEvent('view_item', { 
+            item_id: id, 
+            item_name: name, 
+            content_type: type 
+        });
+        console.log("✅ TRACKING SUCCESS: Viewed", name); // Add this
+    } catch (err) {
+        console.error("❌ TRACKING FAILED:", err); // Add this
+    }
+
+
+            // OFFLINE LOGIC: Use Snapshot if offline
+            let data;
+            if(state.isOffline && state.snapshots[id]) {
+                data = state.snapshots[id];
+                document.getElementById('offline-warning').classList.remove('hidden');
             } else {
-                const res = await fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${API_KEY}`);
-                const data = await res.json();
-                data.results.forEach(item => {
-                    grid.innerHTML += createCard(item);
-                });
+                document.getElementById('offline-warning').classList.add('hidden');
+                try {
+                    const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&append_to_response=release_dates,content_ratings`);
+                    data = await res.json();
+                    // SAVE TO SNAPSHOT
+                    state.snapshots[id] = data;
+                    localStorage.setItem('cv-snapshots', JSON.stringify(state.snapshots));
+                } catch(e) {
+                    if(state.snapshots[id]) data = state.snapshots[id];
+                }
+            }
+            
+            if(data) {
+                document.getElementById('m-title').innerText = name;
+                document.getElementById('m-desc').innerText = data.overview;
+                
+                const starCount = Math.round(data.vote_average/2);
+                document.getElementById('m-stars').innerHTML = `<i data-lucide="star" class="w-3 h-3 fill-yellow-500">
+  </i>`.repeat(starCount) + ` ${data.vote_average.toFixed(1)}`;
+                
+                let pg = type === 'movie' ? (data.release_dates?.results?.find(r => r.iso_3166_1 === 'US')?.release_dates[0].certification || "PG-13") : (data.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || "TV-MA");
+                document.getElementById('m-pg').innerText = pg;
+                
+                updateVaultBtnIcon();
+                
+                if(type === 'tv') {
+                    document.getElementById('tv-controls').classList.remove('hidden');
+                    document.getElementById('smart-continue-btn').classList.remove('hidden');
+                    document.getElementById('season-selector').innerHTML = data.seasons.filter(s => s.season_number > 0).map(s => `<option value="${s.season_number}">Season ${s.season_number}</option>`).join('');
+                    const last = state.watched[id] || { s: 1, e: 1, history: [] };
+                    document.getElementById('season-selector').value = last.s;
+                    await loadEpisodes(last.s, last.e);
+                } else {
+                    document.getElementById('tv-controls').classList.add('hidden');
+                    document.getElementById('smart-continue-btn').classList.add('hidden');
+                    if(!state.isOffline) refreshPlayer();
+                }
             }
             lucide.createIcons();
-            renderHistory();
         }
 
-        function createCard(item) {
-            const name = item.title || item.name;
-            const type = item.media_type || (item.title ? 'movie' : 'tv');
-            // Fix: Ensure path starts with https if it doesn't already
-            const poster = item.poster_path.startsWith('http') ? item.poster_path : IMG_PATH + item.poster_path;
-            
-            return `
-                <div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${type}', '${poster}', '${name.replace(/'/g, "\\'")}')">
-                    <img src="${poster}" class="w-full aspect-[2/3] object-cover">
-                    <div class="p-3">
-                        <p class="text-[10px] font-black uppercase truncate">${name}</p>
-                    </div>
-                </div>
-            `;
-        }
 
-        function openPlayer(id, type, poster, name) {
-            state.currentId = id;
-            document.getElementById('m-title').innerText = name;
-            document.getElementById('player-modal').classList.add('open');
-            
-            // Fix: Check if we are online BEFORE trying to load the iframe
-            const frame = document.getElementById('video-frame');
-            if (navigator.onLine) {
-                frame.src = type === 'movie' 
-                    ? `https://vidsrc.cc/v2/embed/movie/${id}` 
-                    : `https://vidsrc.cc/v2/embed/tv/${id}/1/1`;
-            } else {
-                frame.srcdoc = "<div style='color:white; background:black; height:100vh; display:flex; align-items:center; justify-content:center; font-family:sans-serif;'>Offline: Player unavailable without Wi-Fi</div>";
+function refreshPlayer() {
+    if(state.isOffline) return;
+    const select = document.getElementById('player-source-select');
+    const source = SOURCES[select.value];
+    const frame = document.getElementById('video-frame');
+    
+    if (!frame || !source) return;
+
+    // UI Feedback
+    frame.classList.remove('loaded');
+    const sync = document.getElementById('iframe-sync');
+    if (sync) {
+        sync.classList.remove('hidden');
+        sync.style.opacity = '1';
+    }
+
+    // Define data points
+    const id = state.currentId;
+    const s = state.currentS || 1;
+    const e = state.currentE || 1;
+    const type = state.activePlayerType;
+
+    let finalUrl = "";
+
+    // LOGIC TREE
+    if (type === 'movie') {
+        finalUrl = `${source.url}/movie/${id}`;
+    } else {
+        // 1. Check for Anime Dub specifically
+        if (source.type === 'dub') {
+            finalUrl = `https://vidsrc.cc/v2/embed/anime/${id}/${s}/${e}/dub`;
+        } 
+        // 2. Check for Ultra Source (vidsrc.to)
+        else if (source.name === 'Ultra Source') {
+            finalUrl = `https://vidsrc.to/embed/tv/${id}/${s}/${e}`;
+        }
+        // 3. Check for Nexus Link (Vidlink)
+        else if (source.name === 'Nexus Link') {
+            finalUrl = `https://vidlink.pro/embed/tv/${id}/${s}/${e}?primaryColor=e11d48`;
+        }
+        // 4. Default TV Path
+        else {
+            finalUrl = `${source.url}/tv/${id}/${s}/${e}`;
+        }
+    }
+
+    console.log("Nexus Loading URL:", finalUrl);
+    frame.src = finalUrl;
+}
+
+        function triggerSmartContinue() {
+            const last = state.watched[state.currentId];
+            if(last) {
+                document.getElementById('season-selector').value = last.s;
+                loadEpisodes(last.s, last.e);
             }
-
-            saveToHistory(id, type, poster, name);
-            updateSnapBtn();
         }
 
-        function saveToHistory(id, type, poster, name) {
+
+        function saveHistory(id, type, poster, name) {
             state.history = state.history.filter(h => h.id !== id);
             state.history.unshift({id, type, poster, name});
             localStorage.setItem('cv-history', JSON.stringify(state.history));
             renderHistory();
         }
 
+
         function renderHistory() {
-            const grid = document.getElementById('history-grid');
-            const list = document.getElementById('history-list-full');
-            
-            const html = state.history.map(h => `
-                <div class="min-w-[100px] cursor-pointer" onclick="openPlayer('${h.id}', '${h.type}', '${h.poster}', '${h.name.replace(/'/g, "\\'")}')">
-                    <img src="${h.poster}" class="rounded-lg w-full aspect-[2/3] object-cover border border-white/10">
-                    <p class="text-[8px] font-bold uppercase truncate mt-1 text-zinc-500">${h.name}</p>
-                </div>
-            `).join('');
-
-            grid.innerHTML = html;
-            list.innerHTML = html;
-            document.getElementById('continue-watching').classList.toggle('hidden', state.history.length === 0);
+            const filtered = state.history.filter(h => h.type === state.type);
+            document.getElementById('history-label').innerText = state.type === 'movie' ? 'Movie' : 'TV Show';
+            const html = filtered.map(h => `<div class="relative min-w-[120px] cursor-pointer group" onclick="openPlayer('${h.id}', '${h.type}', '${h.poster}', '${h.name.replace(/'/g, "\\'")}')">
+  <button onclick="event.stopPropagation(); state.history = state.history.filter(x => x.id !== '${h.id}'); localStorage.setItem('cv-history', JSON.stringify(state.history)); renderHistory();" class="absolute top-1 right-1 bg-black/80 p-1.5 rounded-full z-20 text-white opacity-0 group-hover:opacity-100 transition-all">
+  <i data-lucide="x" class="w-3 h-3">
+  </i>
+</button>
+<img src="https://image.tmdb.org/t/p/w200${h.poster}" class="rounded-xl border border-white/5 w-full aspect-[2/3] object-cover shadow-lg">
+<p class="text-[9px] font-black uppercase truncate mt-2 text-zinc-500 tracking-tighter">${h.name}</p>
+</div>`).join('');
+            document.getElementById('history-grid').innerHTML = html;
+            document.getElementById('history-list-full').innerHTML = html || '<p class="text-center py-20 text-zinc-600 text-[10px] font-black">History Cleared</p>';
+            document.getElementById('continue-watching').classList.toggle('hidden', filtered.length === 0);
+            lucide.createIcons();
         }
 
-        function toggleSnapshot() {
-            // Snapshot logic saves metadata for offline browsing
-            if(state.snapshots[state.currentId]) {
-                delete state.snapshots[state.currentId];
-            } else {
-                state.snapshots[state.currentId] = {
-                    id: state.currentId,
-                    title: document.getElementById('m-title').innerText,
-                    poster_path: state.history.find(h => h.id === state.currentId).poster,
-                    media_type: 'movie' 
-                };
+
+        function toggleFavorite() {
+            const idx = state.favorites.findIndex(f => f.id === state.currentId);
+            if(idx > -1) state.favorites.splice(idx, 1);
+            else state.favorites.push({id: state.currentId, type: state.activePlayerType, poster: state.currentPoster, name: state.currentName});
+            localStorage.setItem('cv-favs', JSON.stringify(state.favorites));
+            updateVaultBtnIcon(); renderFavorites();
+        }
+
+
+        function updateVaultBtnIcon() {
+            const isFav = state.favorites.some(f => f.id === state.currentId);
+            document.getElementById('vault-btn').className = isFav ? 'p-3 bg-zinc-800 rounded-full fav-active' : 'p-3 bg-zinc-800 rounded-full text-white';
+        }
+
+
+        function renderFavorites() {
+            document.getElementById('vault-list').innerHTML = state.favorites.map(f => `<div onclick="openPlayer('${f.id}', '${f.type}', '${f.poster}', '${f.name.replace(/'/g, "\\'")}')" class="flex items-center gap-4 cursor-pointer bg-white/5 p-4 rounded-2xl hover:bg-white/10 transition-all group">
+<img src="https://image.tmdb.org/t/p/w92${f.poster}" class="w-12 rounded-lg shadow-md">
+<div class="flex-grow">
+<p class="text-xs font-black uppercase text-white group-hover:text-red-500 transition-colors">${f.name}</p>
+<p class="text-[9px] text-zinc-500 font-bold uppercase">${f.type}</p>
+</div>
+</div>`).join('');
+        }
+
+
+        async function loadContent(reset = true) {
+            if(state.isOffline) {
+                // LOAD FROM SNAPSHOTS IF OFFLINE
+                if(reset) document.getElementById('main-grid').innerHTML = '';
+                const items = Object.values(state.snapshots).filter(s => (s.title || s.name));
+                document.getElementById('main-grid').innerHTML = items.map(item => `<div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${state.type}', '${item.poster_path}', '${(item.title || item.name).replace(/'/g, "\\'")}')">
+<img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover" loading="lazy">
+<div class="p-4">
+<h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title || item.name}</h4>
+<div class="flex items-center gap-2 mt-1">
+<i data-lucide="star" class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500">
+</i>
+<span class="text-[9px] font-black text-zinc-500">CACHED</span>
+</div>
+</div>
+</div>`).join('');
+                return;
             }
-            localStorage.setItem('cv-snapshots', JSON.stringify(state.snapshots));
-            updateSnapBtn();
+
+
+            if(reset) { document.getElementById('main-grid').innerHTML = ''; window.scrollTo(0,0); }
+            let url = state.query ? `https://api.themoviedb.org/3/search/${state.type}?api_key=${API_KEY}&query=${encodeURIComponent(state.query)}&page=${state.page}` : `https://api.themoviedb.org/3/discover/${state.type}?api_key=${API_KEY}&sort_by=popularity.desc&page=${state.page}`;
+            const res = await fetch(url); const data = await res.json();
+            document.getElementById('main-grid').innerHTML += data.results.map(item => `<div class="poster-card bg-zinc-900" onclick="openPlayer('${item.id}', '${state.type}', '${item.poster_path}', '${(item.title || item.name).replace(/'/g, "\\'")}')">
+<img src="https://image.tmdb.org/t/p/w400${item.poster_path}" class="w-full aspect-[2/3] object-cover" loading="lazy">
+<div class="p-4">
+<h4 class="text-[10px] font-black truncate uppercase text-white tracking-tighter">${item.title || item.name}</h4>
+<div class="flex items-center gap-2 mt-1">
+<i data-lucide="star" class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500">
+</i>
+<span class="text-[9px] font-black text-zinc-500">${item.vote_average.toFixed(1)}</span>
+</div>
+</div>
+</div>`).join('');
+            renderPagination(data.total_pages);
+            lucide.createIcons();
         }
 
-        function updateSnapBtn() {
-            const isSaved = state.snapshots[state.currentId];
-            document.getElementById('snap-btn').style.color = isSaved ? '#e11d48' : '#fff';
+
+        async function loadEpisodes(s, targetE = 1) {
+            state.currentS = s;
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${state.currentId}/season/${s}?api_key=${API_KEY}`);
+                const data = await res.json();
+                const watched = state.watched[state.currentId]?.history || [];
+                document.getElementById('episode-grid').innerHTML = data.episodes.map(ep => `<button id="ep-btn-${ep.episode_number}" onclick="setEp(${ep.episode_number})" class="ep-btn ${watched.includes(`${s}-${ep.episode_number}`) ? 'watched' : ''}">${ep.episode_number}</button>`).join('');
+                setEp(targetE);
+            } catch(e) {}
         }
 
+
+        function setEp(e) { 
+            state.currentE = e; 
+            if(state.activePlayerType === 'tv') {
+                if(!state.watched[state.currentId]) state.watched[state.currentId] = { s: state.currentS, e: e, history: [] };
+                state.watched[state.currentId].s = state.currentS; state.watched[state.currentId].e = e;
+                if(!state.watched[state.currentId].history.includes(`${state.currentS}-${e}`)) state.watched[state.currentId].history.push(`${state.currentS}-${e}`);
+                localStorage.setItem('cv-watched', JSON.stringify(state.watched));
+            }
+            document.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`ep-btn-${e}`)?.classList.add('active');
+            refreshPlayer(); 
+        }
+
+
+        function toggleLightMode() {
+            state.light = !state.light;
+            document.body.classList.toggle('light-mode', state.light);
+            document.getElementById('mode-dot').style.transform = state.light ? 'translateX(28px)' : 'translateX(0)';
+            localStorage.setItem('cv-light', state.light);
+        }
+
+
+        function updateType(t) { 
+            state.type = t; localStorage.setItem('cv-type', t);
+            document.querySelectorAll('[id^="btn-"]').forEach(b => b.className = "px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all text-zinc-500");
+            document.getElementById(`btn-${t}`).className = "px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all bg-red-600 text-white shadow-lg shadow-red-600/20";
+            renderHistory(); state.page = 1; loadContent(true); 
+        }
+
+
+        function closePlayer() { document.getElementById('player-modal').classList.remove('open'); document.getElementById('video-frame').src = ''; document.body.style.overflow = ''; }
         function togglePanel(id) { document.getElementById(id).classList.toggle('open'); }
-        function closePlayer() { document.getElementById('player-modal').classList.remove('open'); document.getElementById('video-frame').src = ''; }
+        
+        function renderPagination(total) {
+            const container = document.getElementById('pagination-numbers');
+            container.innerHTML = '';
+            for(let i=1; i<=Math.min(total, 8); i++) {
+                const b = document.createElement('button');
+                b.className = `w-9 h-9 rounded-xl text-[10px] font-black border transition-all ${i===state.page?'bg-red-600 text-white border-red-600':'bg-zinc-800 text-zinc-500 border-white/5'}`;
+                b.innerText=i; b.onclick=()=>{state.page=i; loadContent(true);};
+                container.appendChild(b);
+            }
+        }
+        
+        function loadMore() { state.page++; loadContent(false); }
+        function clearAllData() { if(confirm("Reset Global Database?")) { localStorage.clear(); window.location.reload(); } }
 
-        window.addEventListener('online', () => { state.isOffline = false; loadContent(); });
-        window.addEventListener('offline', () => { state.isOffline = true; loadContent(); });
 
-        loadContent();
+        // CONNECTION MONITORING
+        window.addEventListener('online', () => {
+            state.isOffline = false;
+            document.getElementById('status-dot').className = "w-2 h-2 bg-green-500 rounded-full animate-pulse";
+            document.getElementById('status-text').innerText = "System Online";
+            document.getElementById('offline-toast').classList.remove('visible');
+            loadContent(true);
+        });
+
+
+        window.addEventListener('offline', () => {
+            state.isOffline = true;
+            document.getElementById('status-dot').className = "w-2 h-2 bg-red-500 rounded-full";
+            document.getElementById('status-text').innerText = "System Offline";
+            document.getElementById('offline-toast').classList.add('visible');
+            loadContent(true);
+        });
+
+
+        // SERVICE WORKER REGISTRATION
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('Guardian Error', err));
+            });
+        }
+
+
+        document.getElementById('player-source-select').innerHTML = SOURCES.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+        document.getElementById('search-input').addEventListener('input', (e) => { state.query = e.target.value; state.page = 1; 
+        if (state.query.length > 2) {
+        analytics.logEvent('search', { 
+        search_term: state.query 
+         });
+         }   
+       loadContent(true); });
+        
+        if(state.light) { document.body.classList.add('light-mode'); document.getElementById('mode-dot').style.transform = 'translateX(28px)'; }
+
+
+        renderUpdateLogs();
+        updateType(state.type);
+        renderFavorites();
+        lucide.createIcons();
+        const redCursor = document.getElementById('custom-red-cursor');
+
+// Only show the cursor if a mouse is detected
+document.addEventListener('mousemove', (e) => {
+    redCursor.style.display = 'block';
+    redCursor.style.left = e.clientX + 'px';
+    redCursor.style.top = e.clientY + 'px';
+});
+
+// Pulse effect when clicking
+document.addEventListener('mousedown', () => {
+    redCursor.style.transform = 'translate(-50%, -50%) scale(0.7)';
+    redCursor.style.backgroundColor = '#bc0000'; // Darker red on click
+});
+
+document.addEventListener('mouseup', () => {
+    redCursor.style.transform = 'translate(-50%, -50%) scale(1)';
+    redCursor.style.backgroundColor = '#ff0000';
+});
+
+// Expand cursor when hovering over movies or buttons
+document.addEventListener('mouseover', (e) => {
+    if (e.target.closest('button, a, .poster-card, input')) {
+        redCursor.style.width = '40px';
+        redCursor.style.height = '40px';
+        redCursor.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+    } else {
+        redCursor.style.width = '20px';
+        redCursor.style.height = '20px';
+        redCursor.style.backgroundColor = '#ff0000';
+    }
+});
     </script>
 </body>
 </html>
